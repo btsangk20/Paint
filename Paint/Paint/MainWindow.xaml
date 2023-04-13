@@ -5,8 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Paint"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Paint" Height="450" Width="800">
     <Grid>
+        <Canvas Background="Transparent" Name="drawingCanvas">
+        </Canvas>
+        <Canvas Background="Transparent" Name="eventCanvas"
+                MouseDown="Canvas_MouseDown"
+                MouseMove="Canvas_MouseMove"
+                MouseUp="Canvas_MouseUp"/>
 
     </Grid>
 </Window>
