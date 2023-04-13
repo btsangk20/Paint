@@ -167,7 +167,7 @@ namespace Paint
             if (_isDrawing)
             {
                 _end = e.GetPosition(this);
-                drawingCanvas.Children.Clear();
+                eventCanvas.Children.Clear();
 
                 if (selectedOption == (int) Shape.Line)
                 {
