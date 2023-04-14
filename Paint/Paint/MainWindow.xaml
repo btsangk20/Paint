@@ -7,12 +7,28 @@
         mc:Ignorable="d"
         Title="Paint" Height="450" Width="800">
     <Grid>
-        <Canvas Background="Transparent" Name="drawingCanvas">
-        </Canvas>
-        <Canvas Background="Transparent" Name="eventCanvas"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel HorizontalAlignment="Center" Grid.Row="0" Orientation="Horizontal">
+            <StackPanel.Resources>
+                <Style TargetType="{x:Type Button}">
+                    <Setter Property="Margin" Value="20,5,0,5"/>
+                </Style>
+            </StackPanel.Resources>
+            <Button Content="Line" Click="LineButton_Click" Width="80" />
+            <Button Content="Rectangle" Click="RectangleButton_Click" Width="80" />
+            <Button Content="Ellipse" Click="EllipseButton_Click" Width="80" />
+        </StackPanel>
+        <Canvas Grid.Row="1" Background="Transparent" Name="drawingCanvas" />
+
+        <Canvas Grid.Row="1" Background="Transparent" Name="eventCanvas"
                 MouseDown="Canvas_MouseDown"
                 MouseMove="Canvas_MouseMove"
-                MouseUp="Canvas_MouseUp"/>
+                MouseUp="Canvas_MouseUp"
+                />
+
 
     </Grid>
 </Window>

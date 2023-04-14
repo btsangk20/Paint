@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using static Paint.MainWindow;
+using Point = System.Windows.Point;
+using Rectangle = System.Windows.Shapes.Rectangle;
 
 namespace Paint
 {
@@ -135,30 +129,73 @@ namespace Paint
         private bool _isDrawing = false;
         private Point _start;
         private Point _end;
-        private int selectedOption = 1;
-        List<UIElement> shapes = new List<UIElement>();
+        private int selectedOption = 2;
+        List<UIElement> shapes = new();
+
+
+        private void resetPosition()
+        {
+            _start = new Point(0, 0);
+            _end = new Point(0, 0);
+        }
 
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            _isDrawing= true;
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                _isDrawing = true;
 
-            _start = e.GetPosition(this);
-            
+                _start = e.GetPosition(this);
+            }
+
+
         }
 
         private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            MyLine myLine = new MyLine();
+            UIElement renderShape = null;
 
-            myLine.updateStart(_start);
-            myLine.updateEnd(_end);
+            if (selectedOption == 1)
+            {
 
-            UIElement renderLine = myLine.Draw();
+                MyLine myLine = new MyLine();
 
-            drawingCanvas.Children.Add(renderLine);
+                myLine.updateStart(_start);
+                myLine.updateEnd(_end);
 
-            shapes.Add(renderLine);
+                renderShape = myLine.Draw();
+            }
+            else if (selectedOption == 2)
+            {
+                MyRectangle myRectangle = new MyRectangle();
+                myRectangle.updateStart(_start);
+                myRectangle.updateEnd(_end);
+                renderShape = myRectangle.Draw();
+                Canvas.SetLeft(renderShape, _start.X);
+                Canvas.SetTop(renderShape, _start.Y);
+            }
+            else if (selectedOption == 3)
+            {
+                MyEllipse myEllipse = new MyEllipse();
+                myEllipse.updateStart(_start);
+                myEllipse.updateEnd(_end);
+                renderShape = myEllipse.Draw();
+                Canvas.SetLeft(renderShape, _start.X);
+                Canvas.SetTop(renderShape, _start.Y);
+            }
 
+            if (renderShape != null && e.ChangedButton == MouseButton.Left)
+            {
+                eventCanvas.Children.Add(renderShape);
+
+                shapes.Add(renderShape);
+            }
+
+            else if (e.ChangedButton == MouseButton.Right)
+            {
+                drawingCanvas.Children.Clear();
+                resetPosition();
+            }
             _isDrawing = false;
         }
 
@@ -167,9 +204,9 @@ namespace Paint
             if (_isDrawing)
             {
                 _end = e.GetPosition(this);
-                eventCanvas.Children.Clear();
+                drawingCanvas.Children.Clear();
 
-                if (selectedOption == (int) Shape.Line)
+                if (selectedOption == (int)Shape.Line)
                 {
                     MyLine myLine = new MyLine();
 
@@ -178,9 +215,11 @@ namespace Paint
 
                     UIElement line = myLine.Draw();
 
-                    eventCanvas.Children.Add(line);
+                    drawingCanvas.Children.Add(line);
                     shapes.Add(line);
-                } else if (selectedOption == (int) Shape.Rectangle)  {
+                }
+                else if (selectedOption == (int)Shape.Rectangle)
+                {
                     MyRectangle myRectangle = new MyRectangle();
 
                     myRectangle.updateStart(_start);
@@ -188,9 +227,12 @@ namespace Paint
 
                     UIElement rectangle = myRectangle.Draw();
 
-                    eventCanvas.Children.Add(rectangle);
+                    drawingCanvas.Children.Add(rectangle);
+                    Canvas.SetLeft(rectangle, _start.X);
+                    Canvas.SetTop(rectangle, _start.Y);
                     shapes.Add(rectangle);
-                } else if (selectedOption == (int)Shape.Ellipse)
+                }
+                else if (selectedOption == (int)Shape.Ellipse)
                 {
                     MyEllipse myEllipse = new MyEllipse();
 
@@ -199,10 +241,28 @@ namespace Paint
 
                     UIElement ellipse = myEllipse.Draw();
 
-                    eventCanvas.Children.Add(ellipse);
+                    drawingCanvas.Children.Add(ellipse);
+                    Canvas.SetLeft(ellipse, _start.X);
+                    Canvas.SetTop(ellipse, _start.Y);
+
                     shapes.Add(ellipse);
                 }
             }
+        }
+
+        private void LineButton_Click(object sender, RoutedEventArgs e)
+        {
+            selectedOption = (int)Shape.Line;
+        }
+
+        private void RectangleButton_Click(object sender, RoutedEventArgs e)
+        {
+            selectedOption = (int)Shape.Rectangle;
+        }
+
+        private void EllipseButton_Click(object sender, RoutedEventArgs e)
+        {
+            selectedOption = (int)Shape.Ellipse;
         }
     }
 }
