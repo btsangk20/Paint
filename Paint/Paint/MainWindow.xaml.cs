@@ -1,139 +1,95 @@
-﻿using System;
+﻿using PContract;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
-using Point = System.Windows.Point;
-using Rectangle = System.Windows.Shapes.Rectangle;
+using System.Windows.Media.Imaging;
 
 namespace Paint
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
+
+        private Dictionary<string, IShape> _abilities = new();
+        private bool _isDrawing = false;
+        private Point _start;
+        private Point _end;
+        private string _selectedType = null;
+        private List<IShape> _shapes = new();
+        private IShape? _prototype = null;
+        private Color _selectedColor = Colors.Black;
+        private double[] _selectedDashArray = null;
+        private int _selectedThickness = 2;
+
         public MainWindow()
         {
             InitializeComponent();
         }
 
-        public interface IShape
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Point _start { get; set; }
-            Point _end { get; set; }
-            void updateStart(Point point);
-            void updateEnd(Point point);
-            UIElement Draw();
+            LoadShapes();
         }
 
-        public class MyLine : IShape
+        private void LoadShapes()
         {
-            public Point _start { get; set; }
-            public Point _end { get; set; }
+            var domain = AppDomain.CurrentDomain;
+            var folder = domain.BaseDirectory;
+            var folderInfo = new DirectoryInfo(folder);
+            var dllFiles = folderInfo.GetFiles("*.dll");
 
-            public void updateStart(Point point)
+            foreach (var dll in dllFiles)
             {
-                _start = point;
-            }
+                Debug.WriteLine(dll.FullName);
+                var assembly = Assembly.LoadFrom(dll.FullName);
 
-            public void updateEnd(Point point)
-            {
-                _end = point;
-            }
+                var types = assembly.GetTypes();
 
-            public UIElement Draw()
-            {
-                var line = new Line
+                foreach (var type in types)
                 {
-                    X1 = _start.X,
-                    Y1 = _start.Y,
-                    X2 = _end.X,
-                    Y2 = _end.Y,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 2
-                };
-                return line;
-            }
-        }
+                    if (type.IsClass &&
+                        typeof(IShape).IsAssignableFrom(type))
+                    {
+                        var shape = Activator.CreateInstance(type) as IShape;
 
-        public class MyRectangle : IShape
-        {
-            public Point _start { get; set; }
-            public Point _end { get; set; }
+                        if (_selectedType == null)
+                        {
+                            _selectedType = shape!.Name;
+                        }
 
-            public void updateStart(Point point)
-            {
-                _start = point;
+                        _abilities.Add(shape!.Name, shape);
+                    }
+                }
             }
 
-            public void updateEnd(Point point)
+            foreach (var ability in _abilities)
             {
-                _end = point;
-            }
-
-            public UIElement Draw()
-            {
-                var rectangle = new Rectangle
+                var button = new Button()
                 {
-                    Width = Math.Abs(_end.X - _start.X),
-                    Height = Math.Abs(_end.Y - _start.Y),
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 2,
-                    Fill = Brushes.Transparent
+                    Width = 80,
+                    Height = 35,
+                    Content = ability.Value.Name,
+                    Tag = ability.Value.Name
                 };
 
-                return rectangle;
+                button.Click += Ability_Click;
+                shapePanel.Children.Add(button);
             }
         }
 
-        public class MyEllipse : IShape
+        private void Ability_Click(object sender, RoutedEventArgs e)
         {
-            public Point _start { get; set; }
-            public Point _end { get; set; }
-
-            public void updateStart(Point point)
-            {
-                _start = point;
-            }
-
-            public void updateEnd(Point point)
-            {
-                _end = point;
-            }
-
-            public UIElement Draw()
-            {
-                var ellipse = new Ellipse
-                {
-                    Width = Math.Abs(_end.X - _start.X),
-                    Height = Math.Abs(_end.Y - _start.Y),
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 2,
-                    Fill = Brushes.Transparent
-                };
-
-                return ellipse;
-            }
+            var button = (Button)sender;
+            string name = (string)button.Tag;
+            _selectedType = name;
         }
 
-        enum Shape
-        {
-            Line = 1,
-            Rectangle = 2,
-            Ellipse = 3,
-        }
-
-        private bool _isDrawing = false;
-        private Point _start;
-        private Point _end;
-        private int selectedOption = 2;
-        List<UIElement> shapes = new();
-
-
-        private void resetPosition()
+        private void ResetPosition()
         {
             _start = new Point(0, 0);
             _end = new Point(0, 0);
@@ -145,124 +101,173 @@ namespace Paint
             {
                 _isDrawing = true;
 
-                _start = e.GetPosition(this);
+                _start = e.GetPosition(previewCanvas);
+
+                _prototype = (IShape)
+                _abilities[_selectedType].Clone();
+                _prototype.UpdateStart(_start);
             }
-
-
+            else if (e.ChangedButton == MouseButton.Right)
+            {
+                previewCanvas.Children.Clear();
+                ResetPosition();
+                _isDrawing = false;
+            }
         }
 
         private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            UIElement renderShape = null;
-
-            if (selectedOption == 1)
+            if (_isDrawing && e.ChangedButton == MouseButton.Left)
             {
-
-                MyLine myLine = new MyLine();
-
-                myLine.updateStart(_start);
-                myLine.updateEnd(_end);
-
-                renderShape = myLine.Draw();
+                _shapes.Add((IShape)_prototype.Clone());
+                UIElement newShape = _prototype.Draw(_selectedColor, _selectedThickness, _selectedDashArray);
+                primaryCanvas.Children.Add(newShape);
+                _isDrawing = false;
             }
-            else if (selectedOption == 2)
-            {
-                MyRectangle myRectangle = new MyRectangle();
-                myRectangle.updateStart(_start);
-                myRectangle.updateEnd(_end);
-                renderShape = myRectangle.Draw();
-                Canvas.SetLeft(renderShape, _start.X);
-                Canvas.SetTop(renderShape, _start.Y);
-            }
-            else if (selectedOption == 3)
-            {
-                MyEllipse myEllipse = new MyEllipse();
-                myEllipse.updateStart(_start);
-                myEllipse.updateEnd(_end);
-                renderShape = myEllipse.Draw();
-                Canvas.SetLeft(renderShape, _start.X);
-                Canvas.SetTop(renderShape, _start.Y);
-            }
-
-            if (renderShape != null && e.ChangedButton == MouseButton.Left)
-            {
-                eventCanvas.Children.Add(renderShape);
-
-                shapes.Add(renderShape);
-            }
-
-            else if (e.ChangedButton == MouseButton.Right)
-            {
-                drawingCanvas.Children.Clear();
-                resetPosition();
-            }
-            _isDrawing = false;
         }
 
         private void Canvas_MouseMove(object sender, MouseEventArgs e)
         {
             if (_isDrawing)
             {
-                _end = e.GetPosition(this);
-                drawingCanvas.Children.Clear();
+                previewCanvas.Children.Clear();
 
-                if (selectedOption == (int)Shape.Line)
+                _end = e.GetPosition(previewCanvas);
+                _prototype.UpdateEnd(_end);
+
+                UIElement previewShape = _prototype.Draw(_selectedColor, _selectedThickness, _selectedDashArray);
+                previewCanvas.Children.Add(previewShape);
+            }
+        }
+
+        private void ColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+            var selectedItem = (ComboBoxItem)ColorComboBox.SelectedItem;
+            var colorName = (string)selectedItem.Tag;
+
+            switch (colorName)
+            {
+                case "Red":
+                    _selectedColor = Colors.Red;
+                    break;
+                case "Green":
+                    _selectedColor = Colors.Green;
+                    break;
+                case "Blue":
+                    _selectedColor = Colors.Blue;
+                    break;
+            }
+        }
+
+        private void ThicknessComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedItem = (ComboBoxItem)ThicknessComboBox.SelectedItem;
+            _selectedThickness = int.Parse((string)selectedItem.Tag);
+        }
+
+        private void StrokeTypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedItem = (ComboBoxItem)StrokeTypeComboBox.SelectedItem;
+            var strokeType = (string)selectedItem.Tag;
+
+            switch (strokeType)
+            {
+                case "Solid":
+                    _selectedDashArray = null;
+                    break;
+                case "Dash":
+                    _selectedDashArray = new double[] { 4, 4 };
+                    break;
+                case "Dot":
+                    _selectedDashArray = new double[] { 1, 2 };
+                    break;
+                case "DashDotDash":
+                    _selectedDashArray = new double[] { 4, 2, 1, 2 };
+                    break;
+            }
+        }
+
+        private void ButtonSave_Click(object sender, RoutedEventArgs e)
+        {
+            string path = PromptSelectFolder();
+
+            var selectedItem = (ComboBoxItem)SaveTypeComboBox.SelectedItem;
+            var selectedType = (string)selectedItem.Tag;
+
+            if (path != null)
+            {
+                if (selectedType == "png")
                 {
-                    MyLine myLine = new MyLine();
-
-                    myLine.updateStart(_start);
-                    myLine.updateEnd(_end);
-
-                    UIElement line = myLine.Draw();
-
-                    drawingCanvas.Children.Add(line);
-                    shapes.Add(line);
+                    SaveCanvasToPng(primaryCanvas, path + "\\image.png");
                 }
-                else if (selectedOption == (int)Shape.Rectangle)
+                else if (selectedType == "jpg")
                 {
-                    MyRectangle myRectangle = new MyRectangle();
-
-                    myRectangle.updateStart(_start);
-                    myRectangle.updateEnd(_end);
-
-                    UIElement rectangle = myRectangle.Draw();
-
-                    drawingCanvas.Children.Add(rectangle);
-                    Canvas.SetLeft(rectangle, _start.X);
-                    Canvas.SetTop(rectangle, _start.Y);
-                    shapes.Add(rectangle);
+                    SaveCanvasToJpg(primaryCanvas, path + "\\image.jpg");
                 }
-                else if (selectedOption == (int)Shape.Ellipse)
+                else if (selectedType == "bmp")
                 {
-                    MyEllipse myEllipse = new MyEllipse();
-
-                    myEllipse.updateStart(_start);
-                    myEllipse.updateEnd(_end);
-
-                    UIElement ellipse = myEllipse.Draw();
-
-                    drawingCanvas.Children.Add(ellipse);
-                    Canvas.SetLeft(ellipse, _start.X);
-                    Canvas.SetTop(ellipse, _start.Y);
-
-                    shapes.Add(ellipse);
+                    SaveCanvasToBmp(primaryCanvas, path + "\\image.bmp");
                 }
             }
         }
 
-        private void LineButton_Click(object sender, RoutedEventArgs e)
+        public string PromptSelectFolder()
         {
-            selectedOption = (int)Shape.Line;
+            using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+
+                if (result == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
+                {
+                    return dialog.SelectedPath;
+                }
+            }
+
+            return null;
         }
 
-        private void RectangleButton_Click(object sender, RoutedEventArgs e)
+        public void SaveCanvasToPng(Canvas canvas, string filePath)
         {
-            selectedOption = (int)Shape.Rectangle;
+            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
+                (int)canvas.ActualWidth, (int)canvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
+            renderBitmap.Render(canvas);
+
+            PngBitmapEncoder pngEncoder = new PngBitmapEncoder();
+            pngEncoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+            using (Stream fileStream = File.Create(filePath))
+            {
+                pngEncoder.Save(fileStream);
+            }
         }
 
-        private void EllipseButton_Click(object sender, RoutedEventArgs e)
+        public void SaveCanvasToBmp(Canvas canvas, string filePath)
         {
-            selectedOption = (int)Shape.Ellipse;
+            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
+                (int)canvas.ActualWidth, (int)canvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
+            renderBitmap.Render(canvas);
+
+            BmpBitmapEncoder bmpEncoder = new BmpBitmapEncoder();
+            bmpEncoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+            using (Stream fileStream = File.Create(filePath))
+            {
+                bmpEncoder.Save(fileStream);
+            }
+        }
+
+        public void SaveCanvasToJpg(Canvas canvas, string filePath, int quality = 100)
+        {
+            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
+                (int)canvas.ActualWidth, (int)canvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
+            renderBitmap.Render(canvas);
+
+            JpegBitmapEncoder jpgEncoder = new JpegBitmapEncoder();
+            jpgEncoder.QualityLevel = quality;
+            jpgEncoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+            using (Stream fileStream = File.Create(filePath))
+            {
+                jpgEncoder.Save(fileStream);
+            }
         }
     }
 }

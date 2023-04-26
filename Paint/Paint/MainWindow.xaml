@@ -5,30 +5,48 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Paint"
         mc:Ignorable="d"
-        Title="Paint" Height="450" Width="800">
-    <Grid>
+        Title="Paint" Height="450" Width="800" Loaded="Window_Loaded">
+    <Grid Background="Transparent">
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="40"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
-        <StackPanel HorizontalAlignment="Center" Grid.Row="0" Orientation="Horizontal">
-            <StackPanel.Resources>
-                <Style TargetType="{x:Type Button}">
-                    <Setter Property="Margin" Value="20,5,0,5"/>
-                </Style>
-            </StackPanel.Resources>
-            <Button Content="Line" Click="LineButton_Click" Width="80" />
-            <Button Content="Rectangle" Click="RectangleButton_Click" Width="80" />
-            <Button Content="Ellipse" Click="EllipseButton_Click" Width="80" />
+
+        <StackPanel Orientation="Horizontal" Name="shapePanel" >
+            <ComboBox x:Name="ColorComboBox" Width="150" SelectionChanged="ColorComboBox_SelectionChanged" >
+                <ComboBoxItem Content="Black" Tag="Black"/>
+                <ComboBoxItem Content="White" Tag="Black"/>
+                <ComboBoxItem Content="Red" Tag="Red"/>
+                <ComboBoxItem Content="Green" Tag="Green"/>
+                <ComboBoxItem Content="Blue" Tag="Blue"/>
+            </ComboBox>
+
+            <ComboBox x:Name="ThicknessComboBox" Width="150" SelectionChanged="ThicknessComboBox_SelectionChanged">
+                <ComboBoxItem Content="1" Tag="1"/>
+                <ComboBoxItem Content="2" Tag="2"/>
+                <ComboBoxItem Content="3" Tag="3"/>
+                <ComboBoxItem Content="4" Tag="4"/>
+                <ComboBoxItem Content="5" Tag="5"/>
+            </ComboBox>
+
+            <ComboBox x:Name="StrokeTypeComboBox" Width="150" SelectionChanged="StrokeTypeComboBox_SelectionChanged">
+                <ComboBoxItem Content="Solid" Tag="Solid"/>
+                <ComboBoxItem Content="Dash" Tag="Dash"/>
+                <ComboBoxItem Content="Dot" Tag="Dot"/>
+                <ComboBoxItem Content="Dash Dot Dash" Tag="DashDotDash"/>
+            </ComboBox>
+
+            <Button Content="Save" Width="80" Click="ButtonSave_Click" />
+            <ComboBox x:Name="SaveTypeComboBox" Width="150">
+                <ComboBoxItem Content="PNG" Tag="png"/>
+                <ComboBoxItem Content="JPG" Tag="jpg"/>
+                <ComboBoxItem Content="BMP" Tag="bmp"/>
+            </ComboBox>
         </StackPanel>
-        <Canvas Grid.Row="1" Background="Transparent" Name="drawingCanvas" />
 
-        <Canvas Grid.Row="1" Background="Transparent" Name="eventCanvas"
-                MouseDown="Canvas_MouseDown"
-                MouseMove="Canvas_MouseMove"
-                MouseUp="Canvas_MouseUp"
-                />
-
-
+        <Canvas Grid.Row="1" Background="Transparent" Name="previewCanvas">
+        </Canvas>
+        <Canvas Grid.Row="1" Background="Transparent"  Name="primaryCanvas" MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp">
+        </Canvas>
     </Grid>
 </Window>

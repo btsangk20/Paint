@@ -3,7 +3,27 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Paint", "Paint\Paint.csproj", "{71CEA9B7-7D44-43C7-8580-55CFB9FD1764}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Paint", "Paint\Paint.csproj", "{71CEA9B7-7D44-43C7-8580-55CFB9FD1764}"
+	ProjectSection(ProjectDependencies) = postProject
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A} = {244E204F-A742-4D3A-92E1-2C8D6C52537A}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PContract", "PContract\PContract.csproj", "{244E204F-A742-4D3A-92E1-2C8D6C52537A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RectangleAbility", "RectangleAbility\RectangleAbility.csproj", "{348377EC-91E5-4204-86F0-00528B6F0476}"
+	ProjectSection(ProjectDependencies) = postProject
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A} = {244E204F-A742-4D3A-92E1-2C8D6C52537A}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LineAbility", "LineAbility\LineAbility.csproj", "{B6B2E133-DFF1-4C26-8EB7-8A22FC949663}"
+	ProjectSection(ProjectDependencies) = postProject
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A} = {244E204F-A742-4D3A-92E1-2C8D6C52537A}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipseAbility", "EllipseAbility\EllipseAbility.csproj", "{10ABB472-131B-4E15-8E3C-01C2FB8FC4FA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A} = {244E204F-A742-4D3A-92E1-2C8D6C52537A}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +35,22 @@ Global
 		{71CEA9B7-7D44-43C7-8580-55CFB9FD1764}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71CEA9B7-7D44-43C7-8580-55CFB9FD1764}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71CEA9B7-7D44-43C7-8580-55CFB9FD1764}.Release|Any CPU.Build.0 = Release|Any CPU
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{244E204F-A742-4D3A-92E1-2C8D6C52537A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{348377EC-91E5-4204-86F0-00528B6F0476}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{348377EC-91E5-4204-86F0-00528B6F0476}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{348377EC-91E5-4204-86F0-00528B6F0476}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{348377EC-91E5-4204-86F0-00528B6F0476}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6B2E133-DFF1-4C26-8EB7-8A22FC949663}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6B2E133-DFF1-4C26-8EB7-8A22FC949663}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6B2E133-DFF1-4C26-8EB7-8A22FC949663}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6B2E133-DFF1-4C26-8EB7-8A22FC949663}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10ABB472-131B-4E15-8E3C-01C2FB8FC4FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10ABB472-131B-4E15-8E3C-01C2FB8FC4FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10ABB472-131B-4E15-8E3C-01C2FB8FC4FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10ABB472-131B-4E15-8E3C-01C2FB8FC4FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
