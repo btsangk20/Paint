@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -24,7 +25,9 @@ namespace Paint
         private IShape? _prototype = null;
         private Color _selectedColor = Colors.Black;
         private double[] _selectedDashArray = null;
-        private int _selectedThickness = 2;
+        private int _selectedThickness = 1;
+        private List<Command> _commandList = new List<Command>();
+        private int _currentCommandIndex = -1;
 
         public MainWindow()
         {
@@ -95,6 +98,7 @@ namespace Paint
             _end = new Point(0, 0);
         }
 
+        private UIElement selectedElement;
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
@@ -122,6 +126,22 @@ namespace Paint
                 _shapes.Add((IShape)_prototype.Clone());
                 UIElement newShape = _prototype.Draw(_selectedColor, _selectedThickness, _selectedDashArray);
                 primaryCanvas.Children.Add(newShape);
+                previewCanvas.Children.Clear();
+
+                if (newShape != null && primaryCanvas.Children.Contains(newShape))
+                {
+                    selectedElement = newShape;
+                }
+
+                if (_currentCommandIndex < _commandList.Count - 1)
+                {
+                    _commandList.RemoveRange(_currentCommandIndex + 1, _commandList.Count - _currentCommandIndex - 1);
+                }
+
+                AddCommand command = new AddCommand(primaryCanvas, newShape);
+                _commandList.Add(command);
+                _currentCommandIndex++;
+
                 _isDrawing = false;
             }
         }
@@ -148,6 +168,12 @@ namespace Paint
 
             switch (colorName)
             {
+                case "Black":
+                    _selectedColor = Colors.Black;
+                    break;
+                case "White":
+                    _selectedColor = Colors.White;
+                    break;
                 case "Red":
                     _selectedColor = Colors.Red;
                     break;
@@ -269,5 +295,174 @@ namespace Paint
                 jpgEncoder.Save(fileStream);
             }
         }
+
+        private void canvas_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                double zoomValue = primaryCanvas.LayoutTransform.Value.M11;
+                double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
+                zoomValue *= zoomFactor;
+
+                if (zoomValue < 0.1) zoomValue = 0.1;
+                if (zoomValue > 10) zoomValue = 10;
+
+                ScaleTransform scaleTransform = new ScaleTransform(zoomValue, zoomValue);
+                primaryCanvas.LayoutTransform = scaleTransform;
+
+                e.Handled = true;
+            }
+        }
+
+        private void canvas_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
+            {
+                primaryCanvas.Cursor = Cursors.Hand;
+            }
+        }
+
+        private void primaryCanvas_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
+            {
+                primaryCanvas.Cursor = Cursors.Arrow;
+            }
+        }
+
+        public abstract class Command
+        {
+            protected Canvas canvas;
+            protected UIElement element;
+
+            public Command(Canvas canvas, UIElement element)
+            {
+                this.canvas = canvas;
+                this.element = element;
+            }
+
+            public abstract void Undo();
+            public abstract void Redo();
+        }
+
+        public class AddCommand : Command
+        {
+            public AddCommand(Canvas canvas, UIElement rectangle) : base(canvas, rectangle)
+            {
+            }
+
+            public override void Undo()
+            {
+                canvas.Children.Remove(element);
+            }
+
+            public override void Redo()
+            {
+                canvas.Children.Add(element);
+            }
+        }
+
+        private void Undo()
+        {
+            if (_currentCommandIndex >= 0)
+            {
+                Command command = _commandList[_currentCommandIndex];
+                command.Undo();
+                _currentCommandIndex--;
+            }
+        }
+
+        private void Redo()
+        {
+            if (_currentCommandIndex < _commandList.Count - 1)
+            {
+                _currentCommandIndex++;
+                Command command = _commandList[_currentCommandIndex];
+                command.Redo();
+            }
+        }
+
+        private void ButtonUndo_Click(object sender, RoutedEventArgs e)
+        {
+            Undo();
+        }
+
+        private void ButtonRedo_Click(object sender, RoutedEventArgs e)
+        {
+            Redo();
+        }
+
+        private UIElement copiedElement;
+
+        private void Cut_Click(object sender, RoutedEventArgs e)
+        {
+            if (primaryCanvas.Children.Contains(selectedElement))
+            {
+                copiedElement = CopyElement(selectedElement);
+
+                primaryCanvas.Children.Remove(selectedElement);
+                selectedElement = null;
+            }
+        }
+
+        private UIElement CopyElement(UIElement element)
+        {
+            string xaml = XamlWriter.Save(element);
+
+            UIElement copy = XamlReader.Parse(xaml) as UIElement;
+
+            return copy;
+        }
+
+        private void Paste_Click(object sender, RoutedEventArgs e)
+        {
+            if (copiedElement != null)
+            {
+
+                primaryCanvas.Children.Add(copiedElement);
+
+                Canvas.SetLeft(copiedElement, Canvas.GetLeft(copiedElement) + 10);
+                Canvas.SetTop(copiedElement, Canvas.GetTop(copiedElement) + 10);
+
+                selectedElement = copiedElement;
+                copiedElement = CopyElement(copiedElement);
+            }
+        }
+
+
+        private void Copy_Click(object sender, RoutedEventArgs e)
+        {
+            if (primaryCanvas.Children.Contains(selectedElement))
+            {
+                copiedElement = CopyElement(selectedElement);
+
+                selectedElement = null;
+            }
+        }
+
+        private void AddImage_Click(object sender, RoutedEventArgs e)
+        {
+            // Create OpenFileDialog
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+
+            // Set filter for file extension and default file extension
+            dlg.DefaultExt = ".png";
+            dlg.Filter = "PNG files (*.png)|*.png|JPEG files (*.jpg)|*.jpg|Bitmap files (*.bmp)|*.bmp";
+
+            // Display OpenFileDialog by calling ShowDialog method
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Get the selected file name and display in a TextBox
+            if (result == true)
+            {
+                // Open document
+                string filename = dlg.FileName;
+                BitmapImage bitmapImage = new BitmapImage(new Uri(filename, UriKind.Absolute));
+                Image image = new Image();
+                image.Source = bitmapImage;
+                primaryCanvas.Children.Add(image);
+            }
+        }
+
     }
 }

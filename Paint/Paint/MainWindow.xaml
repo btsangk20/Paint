@@ -37,16 +37,29 @@
             </ComboBox>
 
             <Button Content="Save" Width="80" Click="ButtonSave_Click" />
-            <ComboBox x:Name="SaveTypeComboBox" Width="150">
+            <ComboBox x:Name="SaveTypeComboBox" Width="150" SelectedItem="png">
                 <ComboBoxItem Content="PNG" Tag="png"/>
                 <ComboBoxItem Content="JPG" Tag="jpg"/>
                 <ComboBoxItem Content="BMP" Tag="bmp"/>
             </ComboBox>
+
+            <Button Content="Undo" Click="ButtonUndo_Click" />
+            <Button Content="Redo" Click="ButtonRedo_Click" />
+            <Button Content="Add Image" Click="AddImage_Click" />
+            <Button Content="Copy" Width="75" Click="Copy_Click"/>
+            <Button Content="Cut" Width="75" Click="Cut_Click"/>
+            <Button Content="Paste" Width="75" Click="Paste_Click"/>
         </StackPanel>
 
         <Canvas Grid.Row="1" Background="Transparent" Name="previewCanvas">
         </Canvas>
-        <Canvas Grid.Row="1" Background="Transparent"  Name="primaryCanvas" MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp">
+        <Canvas Grid.Row="1" Background="Transparent"  Name="primaryCanvas" 
+                PreviewMouseWheel="canvas_PreviewMouseWheel" 
+                PreviewKeyDown="canvas_PreviewKeyDown" 
+                PreviewKeyUp="primaryCanvas_PreviewKeyUp"
+                MouseDown="Canvas_MouseDown" 
+                MouseMove="Canvas_MouseMove" 
+                MouseUp="Canvas_MouseUp">
         </Canvas>
     </Grid>
 </Window>
