@@ -28,6 +28,9 @@ namespace Paint
         private int _selectedThickness = 1;
         private List<Command> _commandList = new List<Command>();
         private int _currentCommandIndex = -1;
+        private bool _isAddingText = false;
+        private UIElement _selectedElement;
+        private TextBox _textBox;
 
         public MainWindow()
         {
@@ -90,6 +93,7 @@ namespace Paint
             var button = (Button)sender;
             string name = (string)button.Tag;
             _selectedType = name;
+            _isAddingText = false;
         }
 
         private void ResetPosition()
@@ -98,10 +102,27 @@ namespace Paint
             _end = new Point(0, 0);
         }
 
-        private UIElement selectedElement;
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Left)
+
+            if (_isAddingText)
+            {
+                _textBox = new TextBox();
+                _textBox.Width = 50;
+                _textBox.Focus();
+                _textBox.AcceptsReturn = true;
+                _textBox.PreviewKeyDown += TextBox_PreviewKeyDown;
+                primaryCanvas.Children.Add(_textBox);
+
+                Keyboard.Focus(_textBox);
+
+                Point mousePosition = e.GetPosition(primaryCanvas);
+                Canvas.SetLeft(_textBox, mousePosition.X);
+                Canvas.SetTop(_textBox, mousePosition.Y);
+
+            }
+
+            else if (e.ChangedButton == MouseButton.Left)
             {
                 _isDrawing = true;
 
@@ -111,11 +132,31 @@ namespace Paint
                 _abilities[_selectedType].Clone();
                 _prototype.UpdateStart(_start);
             }
+
             else if (e.ChangedButton == MouseButton.Right)
             {
                 previewCanvas.Children.Clear();
                 ResetPosition();
                 _isDrawing = false;
+            }
+        }
+
+        private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                TextBlock textBlock = new TextBlock();
+                textBlock.Text = _textBox.Text;
+                textBlock.FontSize = 12;
+                textBlock.Foreground = new SolidColorBrush(Colors.Black);
+
+                Canvas.SetLeft(textBlock, Canvas.GetLeft(_textBox));
+                Canvas.SetTop(textBlock, Canvas.GetTop(_textBox));
+
+                primaryCanvas.Children.Add(textBlock);
+
+                primaryCanvas.Children.Remove(_textBox);
+                _textBox = null;
             }
         }
 
@@ -130,7 +171,7 @@ namespace Paint
 
                 if (newShape != null && primaryCanvas.Children.Contains(newShape))
                 {
-                    selectedElement = newShape;
+                    _selectedElement = newShape;
                 }
 
                 if (_currentCommandIndex < _commandList.Count - 1)
@@ -396,12 +437,12 @@ namespace Paint
 
         private void Cut_Click(object sender, RoutedEventArgs e)
         {
-            if (primaryCanvas.Children.Contains(selectedElement))
+            if (primaryCanvas.Children.Contains(_selectedElement))
             {
-                copiedElement = CopyElement(selectedElement);
+                copiedElement = CopyElement(_selectedElement);
 
-                primaryCanvas.Children.Remove(selectedElement);
-                selectedElement = null;
+                primaryCanvas.Children.Remove(_selectedElement);
+                _selectedElement = null;
             }
         }
 
@@ -424,7 +465,7 @@ namespace Paint
                 Canvas.SetLeft(copiedElement, Canvas.GetLeft(copiedElement) + 10);
                 Canvas.SetTop(copiedElement, Canvas.GetTop(copiedElement) + 10);
 
-                selectedElement = copiedElement;
+                _selectedElement = copiedElement;
                 copiedElement = CopyElement(copiedElement);
             }
         }
@@ -432,11 +473,11 @@ namespace Paint
 
         private void Copy_Click(object sender, RoutedEventArgs e)
         {
-            if (primaryCanvas.Children.Contains(selectedElement))
+            if (primaryCanvas.Children.Contains(_selectedElement))
             {
-                copiedElement = CopyElement(selectedElement);
+                copiedElement = CopyElement(_selectedElement);
 
-                selectedElement = null;
+                _selectedElement = null;
             }
         }
 
@@ -464,5 +505,10 @@ namespace Paint
             }
         }
 
+        private void AddTextButton_Click(object sender, RoutedEventArgs e)
+        {
+            _isAddingText = true;
+            _isDrawing = false;
+        }
     }
 }

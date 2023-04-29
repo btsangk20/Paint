@@ -49,11 +49,13 @@
             <Button Content="Copy" Width="75" Click="Copy_Click"/>
             <Button Content="Cut" Width="75" Click="Cut_Click"/>
             <Button Content="Paste" Width="75" Click="Paste_Click"/>
+            <Button Content="Add Text" Click="AddTextButton_Click" />
+
         </StackPanel>
 
         <Canvas Grid.Row="1" Background="Transparent" Name="previewCanvas">
         </Canvas>
-        <Canvas Grid.Row="1" Background="Transparent"  Name="primaryCanvas" 
+        <Canvas Grid.Row="1" Background="Transparent"  Name="primaryCanvas"
                 PreviewMouseWheel="canvas_PreviewMouseWheel" 
                 PreviewKeyDown="canvas_PreviewKeyDown" 
                 PreviewKeyUp="primaryCanvas_PreviewKeyUp"
