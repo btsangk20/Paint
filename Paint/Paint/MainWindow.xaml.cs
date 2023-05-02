@@ -1,4 +1,4 @@
-﻿using PContract;
+﻿using ShapeableAbility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,8 +15,7 @@ namespace Paint
 {
     public partial class MainWindow : Window
     {
-
-        private Dictionary<string, IShape> _abilities = new();
+        private readonly Dictionary<string, IShape> _abilities = new();
         private bool _isDrawing = false;
         private Point _start;
         private Point _end;
@@ -26,7 +25,7 @@ namespace Paint
         private Color _selectedColor = Colors.Black;
         private double[] _selectedDashArray = null;
         private int _selectedThickness = 1;
-        private List<Command> _commandList = new List<Command>();
+        private readonly List<Command> _commandList = new();
         private int _currentCommandIndex = -1;
         private bool _isAddingText = false;
         private UIElement _selectedElement;
@@ -104,7 +103,6 @@ namespace Paint
 
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-
             if (_isAddingText)
             {
                 _textBox = new TextBox();
@@ -121,7 +119,6 @@ namespace Paint
                 Canvas.SetTop(_textBox, mousePosition.Y);
 
             }
-
             else if (e.ChangedButton == MouseButton.Left)
             {
                 _isDrawing = true;
@@ -165,7 +162,7 @@ namespace Paint
             if (_isDrawing && e.ChangedButton == MouseButton.Left)
             {
                 _shapes.Add((IShape)_prototype.Clone());
-                UIElement newShape = _prototype.Draw(_selectedColor, _selectedThickness, _selectedDashArray);
+                UIElement newShape = _prototype.Draw(_selectedColor, Colors.Transparent, _selectedThickness, _selectedDashArray);
                 primaryCanvas.Children.Add(newShape);
                 previewCanvas.Children.Clear();
 
@@ -196,7 +193,7 @@ namespace Paint
                 _end = e.GetPosition(previewCanvas);
                 _prototype.UpdateEnd(_end);
 
-                UIElement previewShape = _prototype.Draw(_selectedColor, _selectedThickness, _selectedDashArray);
+                UIElement previewShape = _prototype.Draw(_selectedColor, Colors.Transparent, _selectedThickness, _selectedDashArray);
                 previewCanvas.Children.Add(previewShape);
             }
         }

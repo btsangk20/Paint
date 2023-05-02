@@ -9,7 +9,107 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PContract\PContract.csproj" />
+    <None Remove="Resources\Images\button-bmp.png" />
+    <None Remove="Resources\Images\button-copy.png" />
+    <None Remove="Resources\Images\button-cut.png" />
+    <None Remove="Resources\Images\button-eraser.png" />
+    <None Remove="Resources\Images\button-fill.png" />
+    <None Remove="Resources\Images\button-jpg.png" />
+    <None Remove="Resources\Images\button-new.png" />
+    <None Remove="Resources\Images\button-open.png" />
+    <None Remove="Resources\Images\button-paste.png" />
+    <None Remove="Resources\Images\button-pencil-size.png" />
+    <None Remove="Resources\Images\button-pencil.png" />
+    <None Remove="Resources\Images\button-png.png" />
+    <None Remove="Resources\Images\button-redo.png" />
+    <None Remove="Resources\Images\button-save-as.png" />
+    <None Remove="Resources\Images\button-save.png" />
+    <None Remove="Resources\Images\button-select.png" />
+    <None Remove="Resources\Images\button-stroke-size.png" />
+    <None Remove="Resources\Images\button-stroke-type.png" />
+    <None Remove="Resources\Images\button-text.png" />
+    <None Remove="Resources\Images\button-undo.png" />
+    <None Remove="Resources\Images\button-zoom-in.png" />
+    <None Remove="Resources\Images\paint.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Images\button-bmp.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-eraser.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-fill.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-jpg.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-new.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-open.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-pencil.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-png.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-redo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-save-as.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-save.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-select.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-stroke-size.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-stroke-type.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-text.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-undo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-zoom-in.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-pencil-size.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-copy.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-cut.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\paint.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Images\button-paste.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fluent.Ribbon" Version="9.0.4" />
+    <PackageReference Include="SharpClipboard" Version="3.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BaseShapes\BaseShapes.csproj" />
+    <ProjectReference Include="..\ShapeableAbility\ShapeableAibility.csproj" />
   </ItemGroup>
 
 </Project>

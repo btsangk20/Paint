@@ -1,0 +1,327 @@
+﻿<Window x:Class="Paint.TestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Paint"
+        xmlns:fluent="clr-namespace:Fluent;assembly=Fluent"
+        mc:Ignorable="d"
+        Loaded="Window_OnLoaded"
+        WindowStartupLocation="CenterScreen"
+        Icon="Resources/Images/paint.ico"
+        Title="Paint" Height="800" Width="1200">
+    <DockPanel>
+        <fluent:Ribbon Name="Ribbon" Margin="0,-26,0,0" DockPanel.Dock="Top" CanMinimize="False">
+            <fluent:RibbonTabItem Header="Home" IsSelected="True">
+                <fluent:RibbonGroupBox Header="Files">
+                    <StackPanel Margin="5" Orientation="Horizontal">
+                        <fluent:Button
+                            Name="ButtonNew"
+                            Header="New"
+                            Icon="Resources/Images/button-new.png"
+                            Margin="0,0,10,0"
+                            Click="ButtonNew_OnClick"
+                            />
+
+                        <fluent:Button
+                            Name="ButtonOpen"
+                            Header="Open"
+                            Icon="Resources/Images/button-open.png"
+                            Click="ButtonOpen_OnClick"
+                            Margin="0,0,10,0" />
+
+                        <fluent:DropDownButton Header="Save" Icon="Resources/Images/button-save.png">
+                            <fluent:MenuItem Name="ButtonSaveAsPNG" Header="Save as PNG" Click="ButtonSaveAsPNG_OnClick">
+                                <fluent:MenuItem.Icon>
+                                    <Image
+                                        Source="Resources/Images/button-png.png"
+                                        RenderOptions.BitmapScalingMode="HighQuality" />
+                                </fluent:MenuItem.Icon>
+                            </fluent:MenuItem>
+
+                            <fluent:MenuItem Name="ButtonSaveAsJPG" Header="Save as JPG" Click="ButtonSaveAsJPG_OnClick">
+                                <fluent:MenuItem.Icon>
+                                    <Image
+                                        Source="Resources/Images/button-jpg.png"
+                                        RenderOptions.BitmapScalingMode="HighQuality" />
+                                </fluent:MenuItem.Icon>
+                            </fluent:MenuItem>
+
+                            <fluent:MenuItem Name="ButtonSaveAsBMP" Header="Save as BMP" Click="ButtonSaveAsBMP_OnClick">
+                                <fluent:MenuItem.Icon>
+                                    <Image
+                                        Source="Resources/Images/button-bmp.png"
+                                        RenderOptions.BitmapScalingMode="HighQuality" />
+                                </fluent:MenuItem.Icon>
+                            </fluent:MenuItem>
+                        </fluent:DropDownButton>
+                    </StackPanel>
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox Header="Clipboard" HorizontalContentAlignment="Center">
+                    <fluent:Button
+                        Name="ButtonPaste"
+                        IsEnabled="False"
+                        Header="Paste" 
+                        Icon="Resources/Images/button-paste.png" 
+                        Margin="5,0,5,0"
+                        SizeDefinition="Medium"
+                        Click="ButtonPaste_OnClick"
+                        Padding="5" />
+
+                    <!--<Grid VerticalAlignment="Center" Margin="5">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <fluent:Button
+                            Name="ButtonPaste"
+                            IsEnabled="False"
+                            Grid.Row="0"
+                            Grid.RowSpan="2"
+                            Grid.Column="0"
+                            Header="Paste" 
+                            Icon="Resources/Images/button-paste.png" 
+                            SizeDefinition="Medium"
+                            Margin="0,0,10,0"
+                            Click="ButtonPaste_OnClick"
+                            Padding="5" />
+
+                        <fluent:Button
+                            Name="ButtonCut"
+                            IsEnabled="False"
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Header="Cut"
+                            Icon="Resources/Images/button-cut.png" 
+                            SizeDefinition="Middle" />
+
+                        <fluent:Button
+                            Name="ButtonCopy"
+                            IsEnabled="False"
+                            Grid.Row="1" 
+                            Grid.Column="1" 
+                            Header="Copy" 
+                            Icon="Resources/Images/button-copy.png"
+                            SizeDefinition="Middle" />
+                    </Grid>-->
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox>
+                    <StackPanel Margin="5,0,5,5" Orientation="Horizontal">
+                        <fluent:Button
+                            Name="ButtonUndo"
+                            Header="Undo"
+                            Icon="Resources/Images/button-undo.png"
+                            Click="ButtonUndo_OnClick"
+                            IsEnabled="False"
+                            Padding="5"
+                            Margin="0,0,10,0" />
+
+                        <fluent:Button
+                            Name="ButtonRedo"
+                            Header="Redo"
+                            Icon="Resources/Images/button-redo.png"
+                            Click="ButtonRedo_OnClick"
+                            IsEnabled="False"
+                            Padding="5" />
+                    </StackPanel>
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox Header="Tools">
+                    <Grid VerticalAlignment="Center" MinHeight="200">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <fluent:ToggleButton
+                            Grid.Column="0"
+                            GroupName="Tools"
+                            Name="ButtonPencil"
+                            SizeDefinition="Medium" 
+                            IsChecked="True" 
+                            VerticalAlignment="Center"
+                            Header="Pencil"
+                            Margin="5"
+                            Padding="5"
+                            Click="ButtonPencil_OnClick">
+
+                            <fluent:ToggleButton.Icon>
+                                <Image 
+                                    Source="Resources/Images/button-pencil.png" 
+                                    RenderOptions.BitmapScalingMode="HighQuality" />
+                            </fluent:ToggleButton.Icon>
+                        </fluent:ToggleButton>
+
+                        <fluent:ToggleButton
+                            Grid.Column="1"
+                            GroupName="Tools" 
+                            Name="ButtonText"
+                            SizeDefinition="Medium"
+                            Header="Text"
+                            Margin="5"
+                            Click="ButtonText_OnClick"
+                            Padding="5">
+
+                            <fluent:ToggleButton.Icon>
+                                <Image 
+                                    Source="Resources/Images/button-text.png"
+                                    RenderOptions.BitmapScalingMode="HighQuality" />
+                            </fluent:ToggleButton.Icon>
+                        </fluent:ToggleButton>
+
+                        <fluent:ToggleButton
+                            Grid.Column="2"
+                            GroupName="Tools"
+                            Name="ButtonEraser"
+                            SizeDefinition="Medium"
+                            Header="Eraser"
+                            Margin="5"
+                            Click="ButtonEraser_OnClick"
+                            Padding="5">
+
+                            <fluent:ToggleButton.Icon>
+                                <Image
+                                    Source="Resources/Images/button-eraser.png"
+                                    RenderOptions.BitmapScalingMode="HighQuality" />
+                            </fluent:ToggleButton.Icon>
+                        </fluent:ToggleButton>
+                    </Grid>
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox Header="Shapes">
+                    <fluent:Gallery
+                        Name="GalleryShapes"
+                        MaxItemsInRow="8"
+                        MinItemsInRow="4"
+                        ItemsSource="{Binding ShapeControls}"
+                    >
+                        <fluent:Gallery.ItemTemplate>
+                            <DataTemplate>
+                                <fluent:ToggleButton GroupName="Tools" Header="{Binding Name}" Tag="{Binding Name}" Click="ButtonShape_OnClick">
+                                    <fluent:ToggleButton.Icon>
+                                        <Image
+                                            Source="{Binding Icon}"
+                                            RenderOptions.BitmapScalingMode="HighQuality" />
+                                    </fluent:ToggleButton.Icon>
+                                </fluent:ToggleButton>
+                            </DataTemplate>
+                        </fluent:Gallery.ItemTemplate>
+                    </fluent:Gallery>
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox Header="Stroke Type">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="5,5,5,0">
+                        <Image
+                            Width="32"
+                            Margin="0,0,0,5"
+                            Source="Resources/Images/button-stroke-type.png" RenderOptions.BitmapScalingMode="HighQuality" />
+
+                        <fluent:ComboBox Name="ComboBoxStrokeType" Width="60" DisplayMemberPath="Text" IsEditable="False" SizeDefinition="Small" SelectedIndex="0" SelectionChanged="ComboBoxStrokeType_OnSelectionChanged">
+                            <TextBlock Text="Solid" />
+                            <TextBlock Text="Dash" />
+                            <TextBlock Text="Dot" />
+                        </fluent:ComboBox>
+                    </StackPanel>
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox Header="Thickness" HorizontalContentAlignment="Center">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="5,5,5,0">
+                        <Image
+                            Width="32"
+                            Margin="0,0,0,5"
+                            Source="Resources/Images/button-stroke-size.png" RenderOptions.BitmapScalingMode="HighQuality" />
+
+                        <fluent:ComboBox Name="ComboBoxStrokeThickness" Width="40" DisplayMemberPath="Text" IsEditable="False" SizeDefinition="Small" SelectedIndex="0" SelectionChanged="ComboBoxStrokeThickness_OnSelectionChanged">
+                            <TextBlock Text="1" />
+                            <TextBlock Text="3" />
+                            <TextBlock Text="5" />
+                            <TextBlock Text="8" />
+                        </fluent:ComboBox>
+                    </StackPanel>
+                </fluent:RibbonGroupBox>
+
+                <fluent:RibbonGroupBox Header="Colors">
+                    <fluent:DropDownButton
+                        HorizontalAlignment="Left"
+                        MaxDropDownHeight="500"
+                        Header="Stroke"
+                        SizeDefinition="Medium">
+
+                        <fluent:DropDownButton.Icon>
+                            <Ellipse Name="ColorPickerCurrentColor"  Width="24"
+                                         Height="24">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush Color="#000" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                        </fluent:DropDownButton.Icon>
+
+                        <fluent:ColorGallery
+                            Name="ColorPicker"
+                            Columns="10"
+                            IsNoColorButtonVisible="False"
+                            Mode="ThemeColors"
+                            StandardColorGridRows="3"
+                            SelectedColorChanged="ColorGallery_OnSelectedColorChanged"
+                            ThemeColorGridRows="5" />
+                    </fluent:DropDownButton>
+
+                    <fluent:DropDownButton
+                        HorizontalAlignment="Left"
+                        MaxDropDownHeight="500"
+                        Header="Fill"
+                        SizeDefinition="Medium">
+
+                        <fluent:DropDownButton.Icon>
+                            <Ellipse Name="EllipseColorGalleryFill"  Width="24"
+                                     Height="24">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush Color="Black" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                        </fluent:DropDownButton.Icon>
+
+                        <fluent:ColorGallery
+                            Name="ColorGalleryFill"
+                            Columns="10"
+                            IsNoColorButtonVisible="False"
+                            Mode="ThemeColors"
+                            StandardColorGridRows="3"
+                            SelectedColorChanged="ColorGalleryFill_OnSelectedColorChanged"
+                            ThemeColorGridRows="5" />
+                    </fluent:DropDownButton>
+
+                    <fluent:CheckBox Name="CheckBoxApplyFillColor" Header="Fill Shape" Margin="5,10,0,0"/>
+                </fluent:RibbonGroupBox>
+            </fluent:RibbonTabItem>
+        </fluent:Ribbon>
+
+        <Grid>
+            <Canvas Background="White"  Name="PrimaryCanvas" />
+            <Canvas Background="Transparent" Name="PreviewCanvas" />
+            <Canvas Background="Transparent" Name="EventCanvas"
+                    PreviewMouseWheel="EventCanvas_OnPreviewMouseWheel" 
+                    MouseDown="EventCanvas_OnMouseDown" 
+                    MouseMove="EventCanvas_OnMouseMove" 
+                    MouseUp="EventCanvas_OnMouseUp">
+                <Border 
+                    x:Name="SelectionZone"
+                    BorderBrush="Blue"
+                    BorderThickness="1"
+                    Background="LightBlue"
+                    CornerRadius="1"
+                    Opacity="0.5"
+                />
+            </Canvas>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,14 +1,16 @@
 using System;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
-namespace PContract
+namespace ShapeableAbility
 {
     public interface IShape : ICloneable
     {
         string Name { get; }
+        BitmapImage Icon { get; }
         void UpdateStart(Point p);
         void UpdateEnd(Point p);
-        UIElement Draw(Color color, int thickness, double[] strokeDashArray);
+        UIElement Draw(Color strokeColor, Color fillColor, int thickness, double[]? strokeDashArray);
     }
 }

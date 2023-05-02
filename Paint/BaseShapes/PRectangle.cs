@@ -1,11 +1,12 @@
-using PContract;
+﻿using ShapeableAbility;
 using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace RectangleAbility
+namespace BaseShapes
 {
     public class PRectangle : IShape
     {
@@ -13,6 +14,13 @@ namespace RectangleAbility
         public Point End { get; set; }
 
         public string Name => "Rectangle";
+
+        public BitmapImage Icon { get; }
+
+        public PRectangle()
+        {
+            Icon = new BitmapImage(new Uri("pack://application:,,,/BaseShapes;component/Resources/Images/rectangle.png"));
+        }
 
         public void UpdateStart(Point p)
         {
@@ -24,16 +32,17 @@ namespace RectangleAbility
             End = p;
         }
 
-        public UIElement Draw(Color color, int thickness, double[] strokeDashArray)
+        public UIElement Draw(Color strokeColor, Color fillColor, int thickness, double[]? strokeDashArray)
         {
-            double width = Math.Abs(End.X - Start.X);
-            double height = Math.Abs(End.Y - Start.Y);
+            var width = Math.Abs(End.X - Start.X);
+            var height = Math.Abs(End.Y - Start.Y);
 
             var shape = new Rectangle()
             {
                 Width = width,
                 Height = height,
-                Stroke = new SolidColorBrush(color),
+                Stroke = new SolidColorBrush(strokeColor),
+                Fill = new SolidColorBrush(fillColor),
                 StrokeThickness = thickness,
                 RenderTransform = new ScaleTransform()
                 {
@@ -44,7 +53,7 @@ namespace RectangleAbility
 
             if (strokeDashArray != null)
             {
-               shape.StrokeDashArray = new DoubleCollection(strokeDashArray);
+                shape.StrokeDashArray = new DoubleCollection(strokeDashArray);
             };
 
             Canvas.SetLeft(shape, Start.X);
