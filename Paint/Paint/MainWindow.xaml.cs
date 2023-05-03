@@ -1,8 +1,12 @@
-﻿using ShapeableAbility;
+﻿using BaseShapes;
+using Microsoft.Win32;
+using Paint.Commands;
+using ShapeableAbility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,35 +14,68 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using WK.Libraries.SharpClipboardNS;
+using static WK.Libraries.SharpClipboardNS.SharpClipboard;
+using Color = System.Windows.Media.Color;
+using Cursors = System.Windows.Input.Cursors;
+using Image = System.Windows.Controls.Image;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Point = System.Windows.Point;
+using TextBox = Fluent.TextBox;
 
 namespace Paint
 {
     public partial class MainWindow : Window
     {
-        private readonly Dictionary<string, IShape> _abilities = new();
         private bool _isDrawing = false;
         private Point _start;
         private Point _end;
-        private string _selectedType = null;
-        private List<IShape> _shapes = new();
+        private string? _selectedShapeControl = null;
         private IShape? _prototype = null;
-        private Color _selectedColor = Colors.Black;
-        private double[] _selectedDashArray = null;
-        private int _selectedThickness = 1;
-        private readonly List<Command> _commandList = new();
+        public Color CurrentColor = Colors.Black;
+        public Color CurrentFillColor = Colors.Black;
+        private double[]? _currentStrokeType = null;
+        private int _currentStrokeThickness = 1;
+        private TextBox? _textBox;
+        private DrawingType _currentDrawingType = DrawingType.Pencil;
+        private readonly Dictionary<string, IShape> _shapeControls = new();
+        private UIElement? _currentElement = null;
+        private readonly List<Command> _commands = new();
         private int _currentCommandIndex = -1;
-        private bool _isAddingText = false;
-        private UIElement _selectedElement;
-        private TextBox _textBox;
+        private readonly SharpClipboard _clipboard = new();
+        private readonly Rectangle _eraser = new()
+        {
+            Width = 20,
+            Height = 20,
+            Fill = Brushes.White,
+            Stroke = Brushes.Black,
+            StrokeThickness = 1,
+            Visibility = Visibility.Hidden
+        };
+
+        public List<IShape> ShapeControls
+        {
+            get
+            {
+                return _shapeControls.Select(shape => shape.Value).ToList();
+            }
+        }
 
         public MainWindow()
         {
             InitializeComponent();
+            LoadShapes();
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
         {
-            LoadShapes();
+            EventCanvas.Cursor = Cursors.Pen;
+            DataContext = this;
+            RestoreStates();
+            _clipboard.ClipboardChanged += OnClipboardChanged;
+            EventCanvas.Children.Add(_eraser);
         }
 
         private void LoadShapes()
@@ -50,462 +87,724 @@ namespace Paint
 
             foreach (var dll in dllFiles)
             {
-                Debug.WriteLine(dll.FullName);
                 var assembly = Assembly.LoadFrom(dll.FullName);
 
                 var types = assembly.GetTypes();
 
                 foreach (var type in types)
                 {
-                    if (type.IsClass &&
-                        typeof(IShape).IsAssignableFrom(type))
+                    if (!type.IsClass || !typeof(IShape).IsAssignableFrom(type))
                     {
-                        var shape = Activator.CreateInstance(type) as IShape;
-
-                        if (_selectedType == null)
-                        {
-                            _selectedType = shape!.Name;
-                        }
-
-                        _abilities.Add(shape!.Name, shape);
+                        continue;
                     }
+
+                    var shape = Activator.CreateInstance(type) as IShape;
+
+                    _shapeControls.Add(shape!.Name, shape);
                 }
             }
+        }
 
-            foreach (var ability in _abilities)
+        private void EventCanvas_OnMouseMove(object sender, MouseEventArgs e)
+        {
+            if (_currentDrawingType == DrawingType.Eraser)
             {
-                var button = new Button()
+                var position = e.GetPosition(EventCanvas);
+
+                if (position.X < 0 || position.Y < 0 || position.X > EventCanvas.ActualWidth ||
+                    position.Y > EventCanvas.ActualHeight)
                 {
-                    Width = 80,
-                    Height = 35,
-                    Content = ability.Value.Name,
-                    Tag = ability.Value.Name
+                    _eraser.Visibility = Visibility.Hidden;
+                    return;
+                }
+
+                _eraser.Visibility = Visibility.Visible;
+
+                Canvas.SetLeft(_eraser, position.X - _eraser.Width / 2);
+                Canvas.SetTop(_eraser, position.Y - _eraser.Height / 2);
+            }
+
+            if (!_isDrawing) return;
+
+            var fillColor = CheckBoxApplyFillColor.IsChecked == true ? CurrentFillColor : Colors.Transparent;
+
+            if (_currentDrawingType == DrawingType.Shape)
+            {
+                PreviewCanvas.Children.Clear();
+                _end = e.GetPosition(PreviewCanvas);
+                _prototype.UpdateEnd(_end);
+
+                var previewShape = _prototype.Draw(CurrentColor, fillColor, _currentStrokeThickness, _currentStrokeType);
+                PreviewCanvas.Children.Add(previewShape);
+            }
+            else if (_currentDrawingType == DrawingType.Pencil)
+            {
+                var position = e.GetPosition(PreviewCanvas);
+                _prototype = new PRectangle();
+                _prototype.UpdateStart(position);
+                _prototype.UpdateEnd(new Point(position.X + _currentStrokeThickness * 2, position.Y + _currentStrokeThickness * 2));
+
+                var previewShape = _prototype.Draw(CurrentColor, CurrentColor, _currentStrokeThickness, null);
+                PreviewCanvas.Children.Add(previewShape);
+            }
+            else if (_currentDrawingType == DrawingType.Eraser)
+            {
+                var newShape = new Rectangle()
+                {
+                    Width = _eraser.Width,
+                    Height = _eraser.Height,
+                    Fill = Brushes.White,
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1
                 };
 
-                button.Click += Ability_Click;
-                shapePanel.Children.Add(button);
+                Canvas.SetLeft(newShape, Canvas.GetLeft(_eraser));
+                Canvas.SetTop(newShape, Canvas.GetTop(_eraser));
+
+                PreviewCanvas.Children.Add(newShape);
             }
         }
 
-        private void Ability_Click(object sender, RoutedEventArgs e)
+        private void EventCanvas_OnMouseUp(object sender, MouseButtonEventArgs e)
         {
-            var button = (Button)sender;
-            string name = (string)button.Tag;
-            _selectedType = name;
-            _isAddingText = false;
-        }
-
-        private void ResetPosition()
-        {
-            _start = new Point(0, 0);
-            _end = new Point(0, 0);
-        }
-
-        private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (_isAddingText)
+            if (!_isDrawing || e.ChangedButton != MouseButton.Left)
             {
-                _textBox = new TextBox();
-                _textBox.Width = 50;
-                _textBox.Focus();
-                _textBox.AcceptsReturn = true;
-                _textBox.PreviewKeyDown += TextBox_PreviewKeyDown;
-                primaryCanvas.Children.Add(_textBox);
-
-                Keyboard.Focus(_textBox);
-
-                Point mousePosition = e.GetPosition(primaryCanvas);
-                Canvas.SetLeft(_textBox, mousePosition.X);
-                Canvas.SetTop(_textBox, mousePosition.Y);
-
+                return;
             }
-            else if (e.ChangedButton == MouseButton.Left)
+
+            UIElement? newElement = null;
+            var fillColor = CheckBoxApplyFillColor.IsChecked == true ? CurrentFillColor : Colors.Transparent;
+
+            if (_currentDrawingType == DrawingType.Shape)
+            {
+                if (_start == _end)
+                {
+                    _isDrawing = false;
+                    return;
+                }
+
+                var shape = _prototype.Draw(CurrentColor, fillColor, _currentStrokeThickness, _currentStrokeType);
+
+                PreviewCanvas.Children.Clear();
+
+                newElement = shape;
+            }
+            else if (_currentDrawingType is DrawingType.Pencil or DrawingType.Eraser)
+            {
+                var canvas = new Canvas()
+                {
+                    Width = PreviewCanvas.Width,
+                    Height = PreviewCanvas.Height,
+                    Background = Brushes.Transparent
+                };
+
+                Canvas.SetLeft(canvas, 0);
+                Canvas.SetTop(canvas, 0);
+
+                var elements = PreviewCanvas.Children.OfType<UIElement>().ToList();
+                foreach (var element in elements)
+                {
+                    PreviewCanvas.Children.Remove(element);
+                    canvas.Children.Add(element);
+                }
+
+                newElement = canvas;
+            }
+
+            if (newElement == null)
+            {
+                _isDrawing = false;
+                return;
+            }
+
+            AddUiElementToCanvas(newElement, _currentDrawingType is DrawingType.Shape);
+            _isDrawing = false;
+        }
+
+        private void EventCanvas_OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
             {
                 _isDrawing = true;
 
-                _start = e.GetPosition(previewCanvas);
+                _start = e.GetPosition(PreviewCanvas);
+                _end = _start;
 
-                _prototype = (IShape)
-                _abilities[_selectedType].Clone();
-                _prototype.UpdateStart(_start);
+                if (_currentDrawingType == DrawingType.Shape)
+                {
+                    _prototype = (IShape)_shapeControls[_selectedShapeControl].Clone();
+                    _prototype.UpdateStart(_start);
+                }
+                else if (_currentDrawingType == DrawingType.Text)
+                {
+                    if (_textBox != null)
+                    {
+                        AddTextToCanvas();
+                        return;
+                    }
+
+                    _textBox = new TextBox
+                    {
+                        Width = 50
+                    };
+                    _textBox.Focus();
+                    _textBox.AcceptsReturn = true;
+                    _textBox.PreviewKeyDown += TextBox_PreviewKeyDown;
+                    PreviewCanvas.Children.Add(_textBox);
+
+                    Keyboard.Focus(_textBox);
+
+                    var mousePosition = e.GetPosition(PrimaryCanvas);
+                    Canvas.SetLeft(_textBox, mousePosition.X);
+                    Canvas.SetTop(_textBox, mousePosition.Y);
+                }
             }
-
             else if (e.ChangedButton == MouseButton.Right)
             {
-                previewCanvas.Children.Clear();
-                ResetPosition();
-                _isDrawing = false;
+                ResetDrawing();
             }
+        }
+
+        private void AddTextToCanvas()
+        {
+            if (_textBox == null)
+            {
+                return;
+            }
+
+            if (_textBox.Text == string.Empty)
+            {
+                _textBox = null;
+                ResetDrawing();
+                return;
+            }
+
+            var textBlock = new TextBlock
+            {
+                Text = _textBox.Text,
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Colors.Black)
+            };
+
+            Canvas.SetLeft(textBlock, Canvas.GetLeft(_textBox));
+            Canvas.SetTop(textBlock, Canvas.GetTop(_textBox));
+
+            AddUiElementToCanvas(textBlock);
+
+            ResetDrawing();
+            _textBox = null;
         }
 
         private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                TextBlock textBlock = new TextBlock();
-                textBlock.Text = _textBox.Text;
-                textBlock.FontSize = 12;
-                textBlock.Foreground = new SolidColorBrush(Colors.Black);
-
-                Canvas.SetLeft(textBlock, Canvas.GetLeft(_textBox));
-                Canvas.SetTop(textBlock, Canvas.GetTop(_textBox));
-
-                primaryCanvas.Children.Add(textBlock);
-
-                primaryCanvas.Children.Remove(_textBox);
-                _textBox = null;
+                AddTextToCanvas();
             }
         }
 
-        private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
+        private void EventCanvas_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (_isDrawing && e.ChangedButton == MouseButton.Left)
+            if (Keyboard.Modifiers != ModifierKeys.Control)
             {
-                _shapes.Add((IShape)_prototype.Clone());
-                UIElement newShape = _prototype.Draw(_selectedColor, Colors.Transparent, _selectedThickness, _selectedDashArray);
-                primaryCanvas.Children.Add(newShape);
-                previewCanvas.Children.Clear();
-
-                if (newShape != null && primaryCanvas.Children.Contains(newShape))
-                {
-                    _selectedElement = newShape;
-                }
-
-                if (_currentCommandIndex < _commandList.Count - 1)
-                {
-                    _commandList.RemoveRange(_currentCommandIndex + 1, _commandList.Count - _currentCommandIndex - 1);
-                }
-
-                AddCommand command = new AddCommand(primaryCanvas, newShape);
-                _commandList.Add(command);
-                _currentCommandIndex++;
-
-                _isDrawing = false;
-            }
-        }
-
-        private void Canvas_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (_isDrawing)
-            {
-                previewCanvas.Children.Clear();
-
-                _end = e.GetPosition(previewCanvas);
-                _prototype.UpdateEnd(_end);
-
-                UIElement previewShape = _prototype.Draw(_selectedColor, Colors.Transparent, _selectedThickness, _selectedDashArray);
-                previewCanvas.Children.Add(previewShape);
-            }
-        }
-
-        private void ColorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-
-            var selectedItem = (ComboBoxItem)ColorComboBox.SelectedItem;
-            var colorName = (string)selectedItem.Tag;
-
-            switch (colorName)
-            {
-                case "Black":
-                    _selectedColor = Colors.Black;
-                    break;
-                case "White":
-                    _selectedColor = Colors.White;
-                    break;
-                case "Red":
-                    _selectedColor = Colors.Red;
-                    break;
-                case "Green":
-                    _selectedColor = Colors.Green;
-                    break;
-                case "Blue":
-                    _selectedColor = Colors.Blue;
-                    break;
-            }
-        }
-
-        private void ThicknessComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var selectedItem = (ComboBoxItem)ThicknessComboBox.SelectedItem;
-            _selectedThickness = int.Parse((string)selectedItem.Tag);
-        }
-
-        private void StrokeTypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var selectedItem = (ComboBoxItem)StrokeTypeComboBox.SelectedItem;
-            var strokeType = (string)selectedItem.Tag;
-
-            switch (strokeType)
-            {
-                case "Solid":
-                    _selectedDashArray = null;
-                    break;
-                case "Dash":
-                    _selectedDashArray = new double[] { 4, 4 };
-                    break;
-                case "Dot":
-                    _selectedDashArray = new double[] { 1, 2 };
-                    break;
-                case "DashDotDash":
-                    _selectedDashArray = new double[] { 4, 2, 1, 2 };
-                    break;
-            }
-        }
-
-        private void ButtonSave_Click(object sender, RoutedEventArgs e)
-        {
-            string path = PromptSelectFolder();
-
-            var selectedItem = (ComboBoxItem)SaveTypeComboBox.SelectedItem;
-            var selectedType = (string)selectedItem.Tag;
-
-            if (path != null)
-            {
-                if (selectedType == "png")
-                {
-                    SaveCanvasToPng(primaryCanvas, path + "\\image.png");
-                }
-                else if (selectedType == "jpg")
-                {
-                    SaveCanvasToJpg(primaryCanvas, path + "\\image.jpg");
-                }
-                else if (selectedType == "bmp")
-                {
-                    SaveCanvasToBmp(primaryCanvas, path + "\\image.bmp");
-                }
-            }
-        }
-
-        public string PromptSelectFolder()
-        {
-            using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
-            {
-                System.Windows.Forms.DialogResult result = dialog.ShowDialog();
-
-                if (result == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
-                {
-                    return dialog.SelectedPath;
-                }
+                return;
             }
 
-            return null;
+            var zoomValue = PrimaryCanvas.LayoutTransform.Value.M11;
+            var zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
+            zoomValue *= zoomFactor;
+
+            if (zoomValue < 0.1) zoomValue = 0.1;
+            if (zoomValue > 10) zoomValue = 10;
+
+            var scaleTransform = new ScaleTransform(zoomValue, zoomValue);
+            PrimaryCanvas.LayoutTransform = scaleTransform;
+            PreviewCanvas.LayoutTransform = scaleTransform;
+
+            e.Handled = true;
         }
 
-        public void SaveCanvasToPng(Canvas canvas, string filePath)
+        private void ResetDrawing()
         {
-            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
-                (int)canvas.ActualWidth, (int)canvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
-            renderBitmap.Render(canvas);
-
-            PngBitmapEncoder pngEncoder = new PngBitmapEncoder();
-            pngEncoder.Frames.Add(BitmapFrame.Create(renderBitmap));
-            using (Stream fileStream = File.Create(filePath))
-            {
-                pngEncoder.Save(fileStream);
-            }
-        }
-
-        public void SaveCanvasToBmp(Canvas canvas, string filePath)
-        {
-            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
-                (int)canvas.ActualWidth, (int)canvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
-            renderBitmap.Render(canvas);
-
-            BmpBitmapEncoder bmpEncoder = new BmpBitmapEncoder();
-            bmpEncoder.Frames.Add(BitmapFrame.Create(renderBitmap));
-            using (Stream fileStream = File.Create(filePath))
-            {
-                bmpEncoder.Save(fileStream);
-            }
-        }
-
-        public void SaveCanvasToJpg(Canvas canvas, string filePath, int quality = 100)
-        {
-            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
-                (int)canvas.ActualWidth, (int)canvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
-            renderBitmap.Render(canvas);
-
-            JpegBitmapEncoder jpgEncoder = new JpegBitmapEncoder();
-            jpgEncoder.QualityLevel = quality;
-            jpgEncoder.Frames.Add(BitmapFrame.Create(renderBitmap));
-            using (Stream fileStream = File.Create(filePath))
-            {
-                jpgEncoder.Save(fileStream);
-            }
-        }
-
-        private void canvas_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            if (Keyboard.Modifiers == ModifierKeys.Control)
-            {
-                double zoomValue = primaryCanvas.LayoutTransform.Value.M11;
-                double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
-                zoomValue *= zoomFactor;
-
-                if (zoomValue < 0.1) zoomValue = 0.1;
-                if (zoomValue > 10) zoomValue = 10;
-
-                ScaleTransform scaleTransform = new ScaleTransform(zoomValue, zoomValue);
-                primaryCanvas.LayoutTransform = scaleTransform;
-
-                e.Handled = true;
-            }
-        }
-
-        private void canvas_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
-            {
-                primaryCanvas.Cursor = Cursors.Hand;
-            }
-        }
-
-        private void primaryCanvas_PreviewKeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
-            {
-                primaryCanvas.Cursor = Cursors.Arrow;
-            }
-        }
-
-        public abstract class Command
-        {
-            protected Canvas canvas;
-            protected UIElement element;
-
-            public Command(Canvas canvas, UIElement element)
-            {
-                this.canvas = canvas;
-                this.element = element;
-            }
-
-            public abstract void Undo();
-            public abstract void Redo();
-        }
-
-        public class AddCommand : Command
-        {
-            public AddCommand(Canvas canvas, UIElement rectangle) : base(canvas, rectangle)
-            {
-            }
-
-            public override void Undo()
-            {
-                canvas.Children.Remove(element);
-            }
-
-            public override void Redo()
-            {
-                canvas.Children.Add(element);
-            }
-        }
-
-        private void Undo()
-        {
-            if (_currentCommandIndex >= 0)
-            {
-                Command command = _commandList[_currentCommandIndex];
-                command.Undo();
-                _currentCommandIndex--;
-            }
-        }
-
-        private void Redo()
-        {
-            if (_currentCommandIndex < _commandList.Count - 1)
-            {
-                _currentCommandIndex++;
-                Command command = _commandList[_currentCommandIndex];
-                command.Redo();
-            }
-        }
-
-        private void ButtonUndo_Click(object sender, RoutedEventArgs e)
-        {
-            Undo();
-        }
-
-        private void ButtonRedo_Click(object sender, RoutedEventArgs e)
-        {
-            Redo();
-        }
-
-        private UIElement copiedElement;
-
-        private void Cut_Click(object sender, RoutedEventArgs e)
-        {
-            if (primaryCanvas.Children.Contains(_selectedElement))
-            {
-                copiedElement = CopyElement(_selectedElement);
-
-                primaryCanvas.Children.Remove(_selectedElement);
-                _selectedElement = null;
-            }
-        }
-
-        private UIElement CopyElement(UIElement element)
-        {
-            string xaml = XamlWriter.Save(element);
-
-            UIElement copy = XamlReader.Parse(xaml) as UIElement;
-
-            return copy;
-        }
-
-        private void Paste_Click(object sender, RoutedEventArgs e)
-        {
-            if (copiedElement != null)
-            {
-
-                primaryCanvas.Children.Add(copiedElement);
-
-                Canvas.SetLeft(copiedElement, Canvas.GetLeft(copiedElement) + 10);
-                Canvas.SetTop(copiedElement, Canvas.GetTop(copiedElement) + 10);
-
-                _selectedElement = copiedElement;
-                copiedElement = CopyElement(copiedElement);
-            }
-        }
-
-
-        private void Copy_Click(object sender, RoutedEventArgs e)
-        {
-            if (primaryCanvas.Children.Contains(_selectedElement))
-            {
-                copiedElement = CopyElement(_selectedElement);
-
-                _selectedElement = null;
-            }
-        }
-
-        private void AddImage_Click(object sender, RoutedEventArgs e)
-        {
-            // Create OpenFileDialog
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-
-            // Set filter for file extension and default file extension
-            dlg.DefaultExt = ".png";
-            dlg.Filter = "PNG files (*.png)|*.png|JPEG files (*.jpg)|*.jpg|Bitmap files (*.bmp)|*.bmp";
-
-            // Display OpenFileDialog by calling ShowDialog method
-            Nullable<bool> result = dlg.ShowDialog();
-
-            // Get the selected file name and display in a TextBox
-            if (result == true)
-            {
-                // Open document
-                string filename = dlg.FileName;
-                BitmapImage bitmapImage = new BitmapImage(new Uri(filename, UriKind.Absolute));
-                Image image = new Image();
-                image.Source = bitmapImage;
-                primaryCanvas.Children.Add(image);
-            }
-        }
-
-        private void AddTextButton_Click(object sender, RoutedEventArgs e)
-        {
-            _isAddingText = true;
+            PreviewCanvas.Children.Clear();
+            _start = new Point();
+            _end = new Point();
             _isDrawing = false;
+        }
+
+        private void ButtonShape_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = (Fluent.ToggleButton)sender;
+            _selectedShapeControl = (string)button.Tag;
+            ResetDrawing();
+
+            _currentDrawingType = DrawingType.Shape;
+            EventCanvas.Cursor = Cursors.Cross;
+        }
+
+        private void ButtonPencil_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentDrawingType = DrawingType.Pencil;
+            EventCanvas.Cursor = Cursors.Pen;
+        }
+
+        private void ButtonUndo_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_currentCommandIndex < 0)
+            {
+                return;
+            }
+
+            var command = _commands[_currentCommandIndex];
+            command.Undo();
+            _currentCommandIndex--;
+
+            ButtonRedo.IsEnabled = true;
+
+            if (_currentCommandIndex < 0)
+            {
+                ButtonUndo.IsEnabled = false;
+            }
+
+            ButtonCopy.IsEnabled = false;
+            ButtonCut.IsEnabled = false;
+        }
+
+        private void ButtonRedo_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_currentCommandIndex >= _commands.Count - 1)
+            {
+                return;
+            }
+
+            _currentCommandIndex++;
+            var command = _commands[_currentCommandIndex];
+            command.Redo();
+
+            ButtonUndo.IsEnabled = true;
+
+            if (_currentCommandIndex >= _commands.Count - 1)
+            {
+                ButtonRedo.IsEnabled = false;
+            }
+
+            ButtonCopy.IsEnabled = false;
+            ButtonCut.IsEnabled = false;
+        }
+
+        private void ColorGallery_OnSelectedColorChanged(object sender, RoutedEventArgs e)
+        {
+            var selectedColor = ColorPicker.SelectedColor;
+
+            if (selectedColor != null)
+            {
+                CurrentColor = (Color)selectedColor;
+                ColorPickerCurrentColor.Fill = new SolidColorBrush(CurrentColor);
+            }
+        }
+
+        private void ButtonOpen_OnClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog
+            {
+                DefaultExt = ".png",
+                Filter = "PNG files (*.png)|*.png|JPEG files (*.jpg)|*.jpg|Bitmap files (*.bmp)|*.bmp"
+            };
+
+            var result = dlg.ShowDialog();
+
+            if (result != true) return;
+
+            var filename = dlg.FileName;
+            var bitmapImage = new BitmapImage();
+
+            using (var stream = new FileStream(filename, FileMode.Open))
+            {
+                bitmapImage.BeginInit();
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.StreamSource = stream;
+                bitmapImage.EndInit();
+            }
+
+            var image = new Image
+            {
+                Source = bitmapImage
+            };
+
+            AddUiElementToCanvas(image);
+        }
+
+        private void ButtonText_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentDrawingType = DrawingType.Text;
+            EventCanvas.Cursor = Cursors.IBeam;
+        }
+
+        private void ButtonSaveAsPNG_OnClick(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                DefaultExt = ".png",
+                Filter = "PNG files (*.png)|*.png"
+            };
+
+            var result = dialog.ShowDialog();
+            if (result != true) return;
+            var filename = dialog.FileName;
+
+            var renderBitmap = new RenderTargetBitmap(
+                (int)PrimaryCanvas.ActualWidth, (int)PrimaryCanvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
+            renderBitmap.Render(PrimaryCanvas);
+
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+
+            using Stream fileStream = File.Create(filename);
+            encoder.Save(fileStream);
+        }
+
+        private void ButtonSaveAsBMP_OnClick(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                DefaultExt = ".bmp",
+                Filter = "Bitmap files (*.bmp)|*.bmp"
+            };
+
+            var result = dialog.ShowDialog();
+            if (result != true) return;
+            var filename = dialog.FileName;
+
+            var renderBitmap = new RenderTargetBitmap(
+                (int)PrimaryCanvas.ActualWidth, (int)PrimaryCanvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
+            renderBitmap.Render(PrimaryCanvas);
+
+            var encoder = new BmpBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+            using Stream fileStream = File.Create(filename);
+            encoder.Save(fileStream);
+        }
+
+        private void ButtonSaveAsJPG_OnClick(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog()
+            {
+                DefaultExt = ".jpg",
+                Filter = "JPEG files (*.jpg)|*.jpg"
+            };
+
+            var result = dialog.ShowDialog();
+            if (result != true) return;
+            var filename = dialog.FileName;
+
+            var renderBitmap = new RenderTargetBitmap(
+                (int)PrimaryCanvas.ActualWidth, (int)PrimaryCanvas.ActualHeight, 96d, 96d, PixelFormats.Pbgra32);
+            renderBitmap.Render(PrimaryCanvas);
+
+            var encoder = new JpegBitmapEncoder
+            {
+                QualityLevel = 100
+            };
+            encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+            using Stream fileStream = File.Create(filename);
+            encoder.Save(fileStream);
+        }
+
+        private void ComboBoxStrokeThickness_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedValue = (TextBlock)ComboBoxStrokeThickness.SelectedValue;
+            var thickness = int.Parse(selectedValue.Text);
+            _currentStrokeThickness = thickness;
+        }
+
+        private void ComboBoxStrokeType_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedValue = (TextBlock)ComboBoxStrokeType.SelectedValue;
+            var strokeType = selectedValue.Text;
+
+            if (strokeType == "Solid")
+            {
+                _currentStrokeType = null;
+            }
+            else if (strokeType == "Dash")
+            {
+                _currentStrokeType = new double[] { 4, 4 };
+            }
+            else if (strokeType == "Dot")
+            {
+                _currentStrokeType = new double[] { 1, 2 };
+            }
+        }
+
+        private void ButtonNew_OnClick(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show("All current drawings will be lost. Are you sure you want to clear the canvas and start a new drawing?", "Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                PrimaryCanvas.Children.Clear();
+                ResetDrawing();
+                _commands.Clear();
+                _currentCommandIndex = -1;
+                _textBox = null;
+                _isDrawing = false;
+                ButtonUndo.IsEnabled = false;
+                ButtonRedo.IsEnabled = false;
+            }
+        }
+
+        private void OnClipboardChanged(object? sender, ClipboardChangedEventArgs e)
+        {
+            ButtonPaste.IsEnabled = e.ContentType == ContentTypes.Image;
+
+            if (e.ContentType != ContentTypes.Text)
+            {
+                return;
+            }
+
+            var tokens = ((string)e.Content).Split('|');
+
+            if (tokens.Length != 2)
+            {
+                return;
+            }
+
+            ButtonPaste.IsEnabled = tokens[0] == "image" || tokens[0] == "xaml";
+        }
+
+        private void ButtonPaste_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (Clipboard.ContainsImage())
+            {
+                var bitmapSource = Clipboard.GetImage();
+                var image = new Image
+                {
+                    Source = bitmapSource
+                };
+
+                AddUiElementToCanvas(image);
+            }
+            else if (Clipboard.ContainsText())
+            {
+                var tokens = Clipboard.GetText().Split('|');
+
+                if (tokens.Length != 2)
+                {
+                    return;
+                }
+
+                if (tokens[0] == "image")
+                {
+                    var base64Data = tokens[1];
+                    var imageBytes = Convert.FromBase64String(base64Data);
+                    var ms = new MemoryStream(imageBytes);
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = ms;
+                    bitmap.EndInit();
+                    var image = new Image { Source = bitmap };
+                    Canvas.SetLeft(image, 0);
+                    Canvas.SetTop(image, 0);
+                    AddUiElementToCanvas(image);
+                }
+                else if (tokens[0] == "xaml")
+                {
+                    var element = XamlReader.Parse(tokens[1]) as UIElement;
+                    Canvas.SetLeft(element!, 0);
+                    Canvas.SetTop(element!, 0);
+                    AddUiElementToCanvas(element!, true);
+                }
+            }
+        }
+
+        private void ColorGalleryFill_OnSelectedColorChanged(object sender, RoutedEventArgs e)
+        {
+            var fillColor = ColorGalleryFill.SelectedColor;
+
+            if (fillColor == null)
+            {
+                return;
+            }
+
+            CurrentFillColor = (Color)fillColor;
+            EllipseColorGalleryFill.Fill = new SolidColorBrush(CurrentFillColor);
+        }
+
+        private void ButtonEraser_OnClick(object sender, RoutedEventArgs e)
+        {
+            _currentDrawingType = DrawingType.Eraser;
+            EventCanvas.Cursor = Cursors.None;
+        }
+
+        private void ButtonCut_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_currentElement == null || !PrimaryCanvas.Children.Contains(_currentElement))
+            {
+                return;
+            }
+
+            var element = CopyElement(_currentElement);
+            AddUiElementToClipboard(element);
+            PrimaryCanvas.Children.Remove(_currentElement);
+            _currentElement = null;
+        }
+
+        private void ButtonCopy_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_currentElement == null || !PrimaryCanvas.Children.Contains(_currentElement)) return;
+
+            var element = CopyElement(_currentElement);
+            AddUiElementToClipboard(element);
+            _currentElement = null;
+        }
+
+        private static UIElement? CopyElement(UIElement element)
+        {
+            var xaml = XamlWriter.Save(element);
+            return XamlReader.Parse(xaml) as UIElement;
+        }
+
+        private void AddUiElementToCanvas(UIElement element, bool isEnableCopyCut = false)
+        {
+            if (_currentCommandIndex < _commands.Count - 1)
+            {
+                _commands.RemoveRange(_currentCommandIndex + 1, _commands.Count - _currentCommandIndex - 1);
+            }
+
+            PrimaryCanvas.Children.Add(element);
+            _commands.Add(new AddCommand(PrimaryCanvas, element));
+            _currentCommandIndex++;
+
+            ButtonUndo.IsEnabled = true;
+            ButtonRedo.IsEnabled = false;
+
+            if (isEnableCopyCut)
+            {
+                _currentElement = element;
+                ButtonCopy.IsEnabled = true;
+                ButtonCut.IsEnabled = true;
+            }
+            else
+            {
+                ButtonCopy.IsEnabled = false;
+                ButtonCut.IsEnabled = false;
+            }
+        }
+
+        public void AddUiElementToClipboard(UIElement? element)
+        {
+            if (element == null)
+            {
+                return;
+            }
+
+            if (element is Image image)
+            {
+                var bitmap = image.Source as BitmapSource;
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+                var ms = new MemoryStream();
+                encoder.Save(ms);
+                var base64 = Convert.ToBase64String(ms.ToArray());
+
+                Clipboard.SetText($"image|{base64}");
+            }
+            else
+            {
+                var xaml = XamlWriter.Save(element);
+                Clipboard.SetText($"xaml|{xaml}");
+            }
+        }
+
+        public void SaveStates()
+        {
+            var elements = PrimaryCanvas.Children.Cast<UIElement>().ToList();
+
+            using var file = new StreamWriter("states.txt");
+
+            foreach (var element in elements)
+            {
+                if (element is Image image)
+                {
+                    var bitmap = image.Source as BitmapSource;
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+                    var ms = new MemoryStream();
+                    encoder.Save(ms);
+                    var base64 = Convert.ToBase64String(ms.ToArray());
+
+                    file.WriteLine($"image|{base64}");
+                }
+                else
+                {
+                    var xaml = XamlWriter.Save(element);
+                    file.WriteLine($"xaml|{xaml}");
+                }
+            }
+        }
+
+        public void RestoreStates()
+        {
+            var elements = new List<UIElement>();
+
+            try
+            {
+                using var file = new StreamReader("states.txt");
+
+                while (!file.EndOfStream)
+                {
+                    var line = file.ReadLine();
+
+                    if (line == null)
+                    {
+                        continue;
+                    }
+
+                    var tokens = line.Split('|');
+
+                    if (tokens.Length != 2)
+                    {
+                        continue;
+                    }
+
+                    if (tokens[0] == "image")
+                    {
+                        var base64Data = tokens[1];
+                        var imageBytes = Convert.FromBase64String(base64Data);
+                        var ms = new MemoryStream(imageBytes);
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.StreamSource = ms;
+                        bitmap.EndInit();
+                        var image = new Image { Source = bitmap };
+                        elements.Add(image);
+                    }
+                    else if (tokens[0] == "xaml")
+                    {
+                        var xaml = tokens[1];
+                        var element = XamlReader.Parse(xaml) as UIElement;
+                        elements.Add(element!);
+                    }
+                }
+            }
+            catch (FileNotFoundException)
+            {
+                return;
+            }
+
+            foreach (var element in elements)
+            {
+                AddUiElementToCanvas(element);
+            }
+        }
+
+        private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
+        {
+            SaveStates();
         }
     }
 }
